@@ -622,6 +622,59 @@ Proof.
       * right. apply IHp; assumption.
 Qed.
 
+(* renamings *)
+
+Definition RenamingsEquiv (renamings_x renamings_y : list (string * string)) : Prop :=
+  forall var_a var_b, In (var_a, var_b) renamings_x <-> In (var_a, var_b) renamings_y.
+
+Fixpoint renamings_equivb_one (renamings_x renamings_y : list (string * string)) : bool :=
+  match renamings_x with
+  | [] => true
+  | (var_a, var_b) :: renamings_x_t =>
+    inb (prod_eqb String.eqb String.eqb) (var_a, var_b) renamings_y &&
+    renamings_equivb_one renamings_x_t renamings_y
+  end.
+
+Theorem renamings_equivb_one_spec : forall renamings_x renamings_y,
+  reflect
+  (forall var_a var_b, In (var_a, var_b) renamings_x -> In (var_a, var_b) renamings_y)
+  (renamings_equivb_one renamings_x renamings_y).
+Proof.
+  intros renamings_x renamings_y. induction renamings_x as [| [var_a var_b] renamings_x_t IH]; simpl.
+  - apply ReflectT. intros var_a var_b H. exfalso. apply H.
+  - destruct (
+      inb_spec
+      (prod_eqb String.eqb String.eqb)
+      (prod_eqb_spec String.eqb String.eqb String.eqb_spec String.eqb_spec)
+      (var_a, var_b)
+      renamings_y
+    ).
+    + destruct IH.
+      * apply ReflectT. intros var_a' var_b' [H | H].
+        -- injection H as H_a H_b. subst var_a' var_b'. apply i.
+        -- apply i0. apply H.
+      * apply ReflectF. intros H. apply n. intros var_a' var_b' H'. apply H. right. apply H'.
+    + apply ReflectF. intros H. apply n. apply H. left. reflexivity.
+Qed.
+
+Definition renamings_equivb (renamings_x renamings_y : list (string * string)) : bool :=
+  renamings_equivb_one renamings_x renamings_y && renamings_equivb_one renamings_y renamings_x.
+
+Theorem renamings_equivb_spec : forall renamings_x renamings_y,
+  reflect (RenamingsEquiv renamings_x renamings_y) (renamings_equivb renamings_x renamings_y).
+Proof.
+  intros renamings_x renamings_y. unfold RenamingsEquiv, renamings_equivb.
+  destruct
+    (renamings_equivb_one_spec renamings_x renamings_y),
+    (renamings_equivb_one_spec renamings_y renamings_x).
+  - apply ReflectT. intros var_a var_b. split.
+    + apply i.
+    + apply i0.
+  - apply ReflectF. intros H. apply n. intros var_a var_b H'. apply H. apply H'.
+  - apply ReflectF. intros H. apply n. intros var_a var_b H'. apply H. apply H'.
+  - apply ReflectF. intros H. apply n. intros var_a var_b H'. apply H. apply H'.
+Qed.
+
 (* NameEquiv *)
 
 Ltac NameEquiv_refl_helper renamings Hall_eq n :=
